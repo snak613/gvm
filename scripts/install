@@ -74,14 +74,17 @@ update_source() {
 }
 
 copy_source() {
-	# Check if the target directory is a registered but missing worktree
-	if git -C "$GO_CACHE_PATH" worktree list | grep -q "\[$GO_INSTALL_ROOT\]"; then
-		if [ ! -d "$GO_INSTALL_ROOT" ]; then
-			echo "Removing stale worktree entry for $GO_INSTALL_ROOT" >> "$GVM_ROOT/logs/go-$GO_NAME-install.log"
-			git -C "$GO_CACHE_PATH" worktree remove "$GO_INSTALL_ROOT" >> "$GVM_ROOT/logs/go-$GO_NAME-install.log" 2>&1
-		fi
-	fi
+	# Step 1: Ensure a clean slate by removing any previous attempt's directory.
+	echo "Ensuring clean install directory at $GO_INSTALL_ROOT" >> "$GVM_ROOT/logs/go-$GO_NAME-install.log"
+	rm -rf "$GO_INSTALL_ROOT" >> "$GVM_ROOT/logs/go-$GO_NAME-install.log" 2>&1
 
+	# Step 2: Prune any stale worktree metadata from the main git repository.
+	# This is the key step to fix the "missing but already registered worktree" error.
+	echo "Pruning stale worktrees from $GO_CACHE_PATH" >> "$GVM_ROOT/logs/go-$GO_NAME-install.log"
+	git -C "$GO_CACHE_PATH" worktree prune >> "$GVM_ROOT/logs/go-$GO_NAME-install.log" 2>&1
+
+	# Step 3: Now, attempt to add the new worktree into a clean environment.
+	echo "Creating new worktree for $version at $GO_INSTALL_ROOT" >> "$GVM_ROOT/logs/go-$GO_NAME-install.log"
 	git -C "$GO_CACHE_PATH" worktree add "$GO_INSTALL_ROOT" "$version" >> "$GVM_ROOT/logs/go-$GO_NAME-install.log" 2>&1 ||
 		display_fatal "Couldn't copy source to target folder. Check the logs $GVM_ROOT/logs/go-$GO_NAME-install.log"
 }
@@ -168,7 +171,7 @@ install_go() {
 }
 
 download_binary() {
-	mkdir -p $GO_INSTALL_ROOT >> "${GVM_ROOT}/logs/go-${GO_NAME}-download-binary" 2>&1
+	mkdir -p $GO_INSTALL_ROOT >> "${GVM_ROcoptOT}/logs/go-${GO_NAME}-download-binary" 2>&1
 	if [ "$(uname)" == "Darwin" ]; then
 		GVM_OS="darwin"
 		osx_major_version="$(sw_vers -productVersion | cut -d "." -f 1)"
