@@ -74,12 +74,17 @@ update_source() {
 }
 
 copy_source() {
-	
-	# git clone -b "$version" "$GO_CACHE_PATH" "$GO_INSTALL_ROOT" >> "$GVM_ROOT/logs/go-$GO_NAME-install.log" 2>&1 ||
+	# Check if the target directory is a registered but missing worktree
+	if git -C "$GO_CACHE_PATH" worktree list | grep -q "\[$GO_INSTALL_ROOT\]"; then
+		if [ ! -d "$GO_INSTALL_ROOT" ]; then
+			echo "Removing stale worktree entry for $GO_INSTALL_ROOT" >> "$GVM_ROOT/logs/go-$GO_NAME-install.log"
+			git -C "$GO_CACHE_PATH" worktree remove "$GO_INSTALL_ROOT" >> "$GVM_ROOT/logs/go-$GO_NAME-install.log" 2>&1
+		fi
+	fi
+
 	git -C "$GO_CACHE_PATH" worktree add "$GO_INSTALL_ROOT" "$version" >> "$GVM_ROOT/logs/go-$GO_NAME-install.log" 2>&1 ||
 		display_fatal "Couldn't copy source to target folder. Check the logs $GVM_ROOT/logs/go-$GO_NAME-install.log"
 }
-
 
 compile_go() {
 	display_message " * Compiling..."
